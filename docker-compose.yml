@@ -5,15 +5,18 @@ services:
     image: apache/kafka:latest
     container_name: kafka
     ports:
-      - "9090:9090" # Exposed port for external host clients
+      - "8085:8085" # Maps host port 8085 to internal Kafka traffic
     environment:
       # KRaft mode settings
       KAFKA_NODE_ID: 1
       KAFKA_PROCESS_ROLES: 'broker,controller'
       KAFKA_CONTROLLER_QUORUM_VOTERS: '1@kafka:9093'
+      # Required by apache/kafka image for KRaft to initialize automatically
+      KAFKA_CLUSTER_ID: 'MkU3OEVBNTcwNTJENDM2Qk'
       # Listener definitions
-      KAFKA_LISTENERS: 'INTERNAL://0.0.0.0:9092,EXTERNAL://0.0.0.0:9090,CONTROLLER://0.0.0.0:9093'
-      KAFKA_ADVERTISED_LISTENERS: 'INTERNAL://kafka:9092,EXTERNAL://localhost:9090'
+      # Internal Docker network traffic stays on 9092, External traffic routes to 8085
+      KAFKA_LISTENERS: 'INTERNAL://0.0.0.0:9092,EXTERNAL://0.0.0.0:8085,CONTROLLER://0.0.0.0:9093'
+      KAFKA_ADVERTISED_LISTENERS: 'INTERNAL://kafka:9092,EXTERNAL://localhost:8085'
       KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: 'INTERNAL:PLAINTEXT,EXTERNAL:PLAINTEXT,CONTROLLER:PLAINTEXT'
       KAFKA_CONTROLLER_LISTENER_NAMES: 'CONTROLLER'
       KAFKA_INTER_BROKER_LISTENER_NAME: 'INTERNAL'
@@ -27,11 +30,11 @@ services:
     image: kafbat/kafka-ui:latest
     container_name: kafka-ui
     ports:
-      - "9000:9000" # UI exposed at http://localhost:9000
+      - "8086:8080" # Access Kafka UI on your host browser at port 8086
     environment:
       DYNAMIC_CONFIG_ENABLED: 'true'
       KAFKA_CLUSTERS_0_NAME: 'local-kraft-cluster'
-      # Connects using the internal Docker network listener
+      # Connects using the internal container-to-container network address
       KAFKA_CLUSTERS_0_BOOTSTRAPSERVERS: 'kafka:9092' 
     depends_on:
       - kafka
